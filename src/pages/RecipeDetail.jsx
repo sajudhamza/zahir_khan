@@ -57,25 +57,10 @@ export default function RecipeDetail() {
         image={recipe.images?.[0] || '/images/food-main.jpg'}
         jsonLd={[
           breadcrumbJsonLd([
-            { name: 'Home', path: '/' },
-            { name: 'Recipes', path: '/recipes' },
-            { name: recipe.name, path: `/recipes/${recipe.slug}` },
-          ]),
-          {
-            '@context': 'https://schema.org',
-            '@type': 'Recipe',
-            name: recipe.name,
-            author: { '@type': 'Person', name: site.fullName },
-            recipeInstructions: (recipe.steps || []).map((text, i) => ({
-              '@type': 'HowToStep',
-              position: i + 1,
-              text,
-            })),
-            image: (recipe.images || []).map((src) =>
-              src.startsWith('http') ? src : `${site.url}${src}`,
-            ),
-          },
-        ]}
+            { name: 'Home', path: '/' }, { name: 'Recipes', path: '/recipes' }, { name: recipe.name, path: `/recipes/${recipe.slug}` }, ]), {
+            '@context': 'https://schema.org', '@type': 'Recipe', name: recipe.name, author: { '@type': 'Person', name: site.fullName }, recipeInstructions: (recipe.steps || []).map((text, i) => ({
+              '@type': 'HowToStep', position: i + 1, text, })), image: (recipe.images || []).map((src) =>
+              src.startsWith('http') ? src : `${site.url}${src}`, ), }, ]}
       />
 
       <Link
@@ -95,7 +80,7 @@ export default function RecipeDetail() {
             <img
               key={src}
               src={src}
-              alt={`${recipe.name} — Indian recipe by Chef Zahir Khan`}
+              alt={`${recipe.name}, Indian recipe by Chef Zahir Khan`}
               className="w-full h-auto object-cover"
               loading="lazy"
             />

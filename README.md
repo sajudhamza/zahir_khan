@@ -1,6 +1,6 @@
 # Chef Zahir Khan
 
-Personal site for Chef Zahir Khan — Head Chef at GupShup, Executive Chef at Punjab Meet House.
+Personal site for Chef Zahir Khan, Head Chef at GupShup, Executive Chef at Punjab Meet House.
 
 ## Run
 
@@ -33,9 +33,9 @@ Official spelling: **Punjab Meet House**.
 
 ## Pages
 
-- `/` — Home
-- `/projects` — Kitchens + admin edit
-- `/projects/:slug` — Project gallery
-- `/recipes` — Recipes + admin
-- `/about` — About
-- `/contact` — Contact form
+- `/`, Home
+- `/projects`, Kitchens + admin edit
+- `/projects/:slug`, Project gallery
+- `/recipes`, Recipes + admin
+- `/about`, About
+- `/contact`, Contact form

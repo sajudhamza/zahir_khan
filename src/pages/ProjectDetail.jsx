@@ -52,11 +52,7 @@ export default function ProjectDetail() {
         image={project.images?.[0] || '/images/hero-orig.jpeg'}
         jsonLd={[
           breadcrumbJsonLd([
-            { name: 'Home', path: '/' },
-            { name: 'Projects', path: '/projects' },
-            { name: project.name, path: `/projects/${project.slug}` },
-          ]),
-        ]}
+            { name: 'Home', path: '/' }, { name: 'Projects', path: '/projects' }, { name: project.name, path: `/projects/${project.slug}` }, ]), ]}
       />
 
       <Link
@@ -92,7 +88,7 @@ export default function ProjectDetail() {
             <img
               key={src}
               src={src}
-              alt={`${project.name} — ${site.fullName}`}
+              alt={`${project.name}, ${site.fullName}`}
               className="w-full h-auto object-cover"
               loading="lazy"
             />

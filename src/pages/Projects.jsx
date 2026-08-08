@@ -3,12 +3,7 @@ import { Link } from 'react-router-dom'
 import { pages } from '../data'
 import Seo, { breadcrumbJsonLd } from '../components/Seo'
 import {
-  adminLogin,
-  adminLogout,
-  fetchProjects,
-  isLoggedIn,
-  updateProject,
-} from '../lib/projectsApi'
+  adminLogin, adminLogout, fetchProjects, isLoggedIn, updateProject, } from '../lib/projectsApi'
 
 export default function Projects() {
   const [projects, setProjects] = useState([])
@@ -61,13 +56,7 @@ export default function Projects() {
   function startEdit(project) {
     setEditingSlug(project.slug)
     setForm({
-      name: project.name || '',
-      role: project.role || '',
-      location: project.location || '',
-      website: project.website || '',
-      summary: project.summary || '',
-      description: project.description || '',
-    })
+      name: project.name || '', role: project.role || '', location: project.location || '', website: project.website || '', summary: project.summary || '', description: project.description || '', })
     setFiles([])
     setMessage('')
     setError('')
@@ -101,10 +90,7 @@ export default function Projects() {
         path={pages.projects.path}
         jsonLd={[
           breadcrumbJsonLd([
-            { name: 'Home', path: '/' },
-            { name: 'Projects', path: '/projects' },
-          ]),
-        ]}
+            { name: 'Home', path: '/' }, { name: 'Projects', path: '/projects' }, ]), ]}
       />
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
@@ -232,7 +218,7 @@ export default function Projects() {
                     <img
                       key={src}
                       src={src}
-                      alt={`${project.name} — work by Chef Zahir Khan`}
+                      alt={`${project.name}, work by Chef Zahir Khan`}
                       className="w-full aspect-square object-cover"
                       loading="lazy"
                     />

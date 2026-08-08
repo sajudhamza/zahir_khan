@@ -2,22 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { copy, images, pages, site } from '../data'
 import Seo, {
-  breadcrumbJsonLd,
-  faqJsonLd,
-  personJsonLd,
-  websiteJsonLd,
-} from '../components/Seo'
+  breadcrumbJsonLd, faqJsonLd, personJsonLd, websiteJsonLd, } from '../components/Seo'
 import { fetchProjects } from '../lib/projectsApi'
 
 function ContactForm() {
   const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    country: '+1',
-    message: '',
-  })
+    firstName: '', lastName: '', email: '', phone: '', country: '+1', message: '', })
 
   function handleChange(e) {
     const { name, value } = e.target
@@ -29,13 +19,7 @@ function ContactForm() {
     console.log('Contact form submitted:', form)
     alert('Thank you! Your message has been received.')
     setForm({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      country: '+1',
-      message: '',
-    })
+      firstName: '', lastName: '', email: '', phone: '', country: '+1', message: '', })
   }
 
   const fieldClass =
@@ -151,16 +135,7 @@ function ContactForm() {
 }
 
 const dishAlts = [
-  'Authentic Indian dish plated by Chef Zahir Khan in Manhattan',
-  'Modern Indian cuisine by Chef Zahir Khan at Gupshup NYC',
-  'Indian street-food inspired plate by Chef Zahir Khan',
-  'Refined Indian tasting dish from Chef Zahir Khan',
-  'Bold Indian flavors crafted by Chef Zahir Khan',
-  'Restaurant-quality Indian cuisine in New York City',
-  'Signature Indian culinary presentation by Zahir Khan',
-  'Traditional spices with modern plating by Chef Zahir Khan',
-  'Indian culinary artistry from Manhattan chef Zahir Khan',
-]
+  'Authentic Indian dish plated by Chef Zahir Khan in Manhattan', 'Modern Indian cuisine by Chef Zahir Khan at Gupshup NYC', 'Indian street-food inspired plate by Chef Zahir Khan', 'Refined Indian tasting dish from Chef Zahir Khan', 'Bold Indian flavors crafted by Chef Zahir Khan', 'Restaurant-quality Indian cuisine in New York City', 'Signature Indian culinary presentation by Zahir Khan', 'Traditional spices with modern plating by Chef Zahir Khan', 'Indian culinary artistry from Manhattan chef Zahir Khan', ]
 
 export default function Home({ scrollToContact = false }) {
   const location = useLocation()
@@ -181,11 +156,7 @@ export default function Home({ scrollToContact = false }) {
   }, [])
 
   const collageImages = [
-    images.dishes[0],
-    images.dishes[1],
-    images.dishes[6],
-    images.dishes[2],
-  ]
+    images.dishes[0], images.dishes[1], images.dishes[6], images.dishes[2], ]
 
   const instagramGrid = images.dishes.slice(0, 6)
 
@@ -197,11 +168,7 @@ export default function Home({ scrollToContact = false }) {
         path={seo.path}
         image={images.heroOrig}
         jsonLd={[
-          personJsonLd(),
-          websiteJsonLd(),
-          breadcrumbJsonLd([{ name: 'Home', path: '/' }]),
-          faqJsonLd(copy.faq),
-        ]}
+          personJsonLd(), websiteJsonLd(), breadcrumbJsonLd([{ name: 'Home', path: '/' }]), faqJsonLd(copy.faq), ]}
       />
 
       {/* Hero */}
@@ -232,7 +199,7 @@ export default function Home({ scrollToContact = false }) {
               <span className="block">&amp; Flavors</span>
             </p>
             <p className="sr-only">
-              Chef Zahir Khan — tastes and flavors of authentic Indian cuisine in New York City
+              Chef Zahir Khan. Tastes and flavors of authentic Indian cuisine in New York City
             </p>
           </div>
 
@@ -309,7 +276,7 @@ export default function Home({ scrollToContact = false }) {
               Projects
             </h2>
             <p className="font-sans font-light text-base text-black/80 max-w-xl">
-              GupShup, Chote Miya, Ammi, and Punjab Meet House — the kitchens I work with.
+              GupShup, Chote Miya, Ammi, and Punjab Meet House: the kitchens I work with.
             </p>
           </div>
           <Link
@@ -417,7 +384,7 @@ export default function Home({ scrollToContact = false }) {
         </div>
       </section>
 
-      {/* FAQ — supports rich results for Indian chef searches */}
+      {/* FAQ for Indian chef search rich results */}
       <section
         className="px-5 sm:px-10 lg:px-16 py-16 sm:py-24 max-w-3xl mx-auto"
         aria-labelledby="faq-heading"
@@ -461,7 +428,7 @@ export default function Home({ scrollToContact = false }) {
           Let&apos;s Work Together
         </h2>
         <p className="font-sans font-light text-base leading-relaxed max-w-xl mb-8 text-black/80">
-          For kitchen work, events, press, or collaborations — write below or email me directly.
+          For kitchen work, events, press, or collaborations, write below or email me directly.
         </p>
         <ContactForm />
       </section>
