@@ -1,0 +1,50 @@
+[
+  {
+    "id": "gupshup",
+    "slug": "gupshup",
+    "name": "GupShup",
+    "role": "Head Chef",
+    "location": "Gramercy, Manhattan",
+    "website": "https://www.gupshupnyc.com/",
+    "folder": "gupshup",
+    "summary": "Bombay-inspired kitchen in Gramercy — where I cook every day.",
+    "description": "At GupShup I run the kitchen day to day. The food is Bombay-inspired, but I start from the way we cook at home, then shape it for New York. Kulchas from the tandoor, curries, sharing plates — meals meant for the table, not for show.\n\nThis is also where I have cooked for James Beard Foundation dinners with our team. Guests come for good Indian food and stay for the conversation. That is the point of the name.",
+    "images": []
+  },
+  {
+    "id": "chote-miya",
+    "slug": "chote-miya",
+    "name": "Chote Miya",
+    "role": "Culinary team · Bombay House Hospitality",
+    "location": "New York (Chelsea Market, Time Out Market & more)",
+    "website": "https://www.chotemiya.com/",
+    "folder": "chote-miya",
+    "summary": "Street food from the same family of kitchens — chaat, frankies, butter chicken.",
+    "description": "Chote Miya means a regular, approachable guy. The menu is street food: chaat, frankies, Delhi butter chicken, the plates I grew up eating on the roadside and in small shops.\n\nI have worked with this kitchen as part of the same hospitality family as GupShup. The job is simple — keep the food honest, keep it fast enough for New York, and do not overcomplicate what already tastes good.",
+    "images": []
+  },
+  {
+    "id": "ammi",
+    "slug": "ammi",
+    "name": "Ammi",
+    "role": "Group kitchen · Pier 57",
+    "location": "Pier 57 / Market 57, Manhattan",
+    "website": "https://www.ammi.nyc/",
+    "folder": "ammi",
+    "summary": "Home-style Indian food — the kind that starts in a mother’s kitchen.",
+    "description": "Ammi means mother. The recipes come from home cooking — Suraiya Rizvi’s kitchen, curries, breads, pickles, and the seasoning that tastes like family.\n\nI have been part of our group’s work at Pier 57 and cooked on the James Beard platform there. For me, Ammi is a reminder that good Indian food does not need a long story. It needs care, patience, and the taste of home.",
+    "images": []
+  },
+  {
+    "id": "punjab-meet-house",
+    "slug": "punjab-meet-house",
+    "name": "Punjab Meet House",
+    "role": "Executive Chef",
+    "location": "Jersey City, NJ",
+    "website": "https://www.pmhnj.com/",
+    "folder": "punjab-meet-house",
+    "summary": "Punjabi food across the river — tandoor, grilled meats, slow curries.",
+    "description": "At Punjab Meet House I lead the kitchen. We cook Punjabi food — tandoor work, grilled meats, slow curries — the North Indian flavors I know well.\n\nThe menu looks back to pre-partition Punjab: bold spice, meat cooked with patience, breads from the tandoor. Jersey City has a big Indian community. I want them to sit down and taste food that feels familiar, cooked properly, and made to share.",
+    "images": []
+  }
+]

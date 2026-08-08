@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-sage text-black font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .opacity-0-start {
+    opacity: 0;
+  }
+}
