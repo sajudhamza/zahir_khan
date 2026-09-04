@@ -96,7 +96,7 @@ export default function ProjectDetail() {
         </div>
       ) : (
         <div className="border border-dashed border-black/20 p-12 text-center font-sans font-light text-sm text-black/50">
-          No photos yet. Add files to <code>public/projects/{project.folder}/</code>
+          No photos yet. Log in on the projects page and edit {project.name} to upload some.
         </div>
       )}
     </article>

@@ -3,7 +3,23 @@ import { Link } from 'react-router-dom'
 import { pages } from '../data'
 import Seo, { breadcrumbJsonLd } from '../components/Seo'
 import {
-  adminLogin, adminLogout, fetchProjects, isLoggedIn, updateProject, } from '../lib/projectsApi'
+  adminLogin,
+  adminLogout,
+  createProject,
+  updateProject,
+  deleteProject,
+  fetchProjects,
+  isLoggedIn,
+} from '../lib/projectsApi'
+
+const EMPTY_FORM = {
+  name: '',
+  role: '',
+  location: '',
+  website: '',
+  summary: '',
+  description: '',
+}
 
 export default function Projects() {
   const [projects, setProjects] = useState([])
@@ -12,10 +28,12 @@ export default function Projects() {
   const [showLogin, setShowLogin] = useState(false)
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
-  const [editingSlug, setEditingSlug] = useState('')
+  const [editingSlug, setEditingSlug] = useState('') // slug being edited, or 'new'
   const [form, setForm] = useState(null)
   const [files, setFiles] = useState([])
+  const [removeImages, setRemoveImages] = useState([])
   const [saving, setSaving] = useState(false)
+  const [progress, setProgress] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -49,38 +67,234 @@ export default function Projects() {
   async function handleLogout() {
     await adminLogout()
     setLoggedIn(false)
-    setEditingSlug('')
-    setForm(null)
+    closeForm()
+  }
+
+  function startCreate() {
+    setEditingSlug('new')
+    setForm(EMPTY_FORM)
+    setFiles([])
+    setRemoveImages([])
+    setMessage('')
+    setError('')
   }
 
   function startEdit(project) {
     setEditingSlug(project.slug)
     setForm({
-      name: project.name || '', role: project.role || '', location: project.location || '', website: project.website || '', summary: project.summary || '', description: project.description || '', })
+      name: project.name || '',
+      role: project.role || '',
+      location: project.location || '',
+      website: project.website || '',
+      summary: project.summary || '',
+      description: project.description || '',
+    })
     setFiles([])
+    setRemoveImages([])
     setMessage('')
     setError('')
   }
 
+  function closeForm() {
+    setEditingSlug('')
+    setForm(null)
+    setFiles([])
+    setRemoveImages([])
+    setProgress('')
+  }
+
+  function toggleRemove(src) {
+    setRemoveImages((list) =>
+      list.includes(src) ? list.filter((s) => s !== src) : [...list, src],
+    )
+  }
+
+  const onProgress = (index, total, frac, filename) =>
+    setProgress(`Uploading ${index + 1}/${total} (${Math.round(frac * 100)}%) — ${filename}`)
+
   async function handleSave(e) {
     e.preventDefault()
-    if (!editingSlug || !form) return
+    if (!form) return
     setSaving(true)
     setError('')
     setMessage('')
+    setProgress('')
     try {
-      await updateProject({ slug: editingSlug, fields: form, files })
-      setMessage('Project saved. New photos are in the project folder.')
-      setFiles([])
-      setEditingSlug('')
-      setForm(null)
+      if (editingSlug === 'new') {
+        await createProject({
+          name: form.name.trim(),
+          description: form.description.trim(),
+          fields: {
+            role: form.role,
+            location: form.location,
+            website: form.website,
+            summary: form.summary,
+          },
+          files,
+          onProgress,
+        })
+        setMessage('Project published.')
+      } else {
+        await updateProject({
+          slug: editingSlug,
+          fields: form,
+          files,
+          removeImages,
+          onProgress,
+        })
+        setMessage('Project saved.')
+      }
+      closeForm()
       await load()
     } catch (err) {
       setError(err.message || 'Could not save')
     } finally {
       setSaving(false)
+      setProgress('')
     }
   }
+
+  async function handleDelete(project) {
+    if (!window.confirm(`Delete "${project.name}" and all of its photos?`)) return
+    setError('')
+    setMessage('')
+    try {
+      await deleteProject(project.slug)
+      setMessage(`Deleted ${project.name}.`)
+      closeForm()
+      await load()
+    } catch (err) {
+      setError(err.message || 'Could not delete project')
+    }
+  }
+
+  const editing = editingSlug && editingSlug !== 'new'
+    ? projects.find((p) => p.slug === editingSlug)
+    : null
+
+  const projectForm = form && (
+    <form
+      onSubmit={handleSave}
+      className="mt-8 border border-black/15 bg-white/40 p-6 space-y-4 max-w-2xl"
+    >
+      <h3 className="font-sans font-semibold text-sm tracking-[0.2em] uppercase">
+        {editingSlug === 'new' ? 'Add a project' : `Edit ${form.name || 'project'}`}
+      </h3>
+      <div>
+        <label className="block font-sans text-xs tracking-[0.15em] uppercase mb-1">
+          Project name (restaurant)
+        </label>
+        <input
+          type="text"
+          value={form.name}
+          required
+          placeholder="e.g. GupShup"
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          className="w-full bg-transparent border-0 border-b border-black/40 py-2 font-sans font-light text-sm focus:outline-none focus:border-black"
+        />
+      </div>
+      {['role', 'location', 'website'].map((field) => (
+        <div key={field}>
+          <label className="block font-sans text-xs tracking-[0.15em] uppercase mb-1">
+            {field} <span className="normal-case tracking-normal text-black/40">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={form[field]}
+            onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+            className="w-full bg-transparent border-0 border-b border-black/40 py-2 font-sans font-light text-sm focus:outline-none focus:border-black"
+          />
+        </div>
+      ))}
+      <div>
+        <label className="block font-sans text-xs tracking-[0.15em] uppercase mb-1">
+          Description
+        </label>
+        <textarea
+          rows={8}
+          value={form.description}
+          required
+          placeholder="What is this kitchen, and what do you cook there?"
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          className="w-full border border-black/20 p-3 font-sans font-light text-sm focus:outline-none focus:border-black"
+        />
+      </div>
+
+      {editing && (editing.images || []).length > 0 && (
+        <div>
+          <p className="block font-sans text-xs tracking-[0.15em] uppercase mb-2">
+            Current photos
+            <span className="normal-case tracking-normal text-black/50"> — click to remove</span>
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {editing.images.map((src) => (
+              <button
+                key={src}
+                type="button"
+                onClick={() => toggleRemove(src)}
+                className={`relative aspect-square overflow-hidden border ${
+                  removeImages.includes(src) ? 'border-red-600 opacity-40' : 'border-black/15'
+                }`}
+              >
+                <img src={src} alt="" className="w-full h-full object-cover" />
+                {removeImages.includes(src) && (
+                  <span className="absolute inset-0 flex items-center justify-center font-sans text-[10px] uppercase tracking-[0.2em] text-red-700 bg-white/60">
+                    Remove
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="block font-sans text-xs tracking-[0.15em] uppercase mb-1">
+          {editingSlug === 'new' ? 'Photos' : 'Add photos'}
+        </label>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          className="block w-full font-sans font-light text-sm"
+        />
+        {files.length > 0 && (
+          <p className="mt-2 font-sans font-light text-xs text-black/60">
+            {files.length} photo{files.length === 1 ? '' : 's'} selected
+          </p>
+        )}
+      </div>
+
+      {progress && <p className="text-sm text-black/70">{progress}</p>}
+
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="submit"
+          disabled={saving}
+          className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-6 py-2.5 hover:bg-black hover:text-sage transition-colors disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : editingSlug === 'new' ? 'Publish project' : 'Save project'}
+        </button>
+        <button
+          type="button"
+          onClick={closeForm}
+          className="font-sans font-light text-xs tracking-[0.2em] uppercase px-4 py-2.5"
+        >
+          Cancel
+        </button>
+        {editing && (
+          <button
+            type="button"
+            onClick={() => handleDelete(editing)}
+            className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-red-700 text-red-700 px-4 py-2.5 hover:bg-red-700 hover:text-white transition-colors"
+          >
+            Delete project
+          </button>
+        )}
+      </div>
+    </form>
+  )
 
   return (
     <article className="px-5 sm:px-10 lg:px-16 py-16 sm:py-24 max-w-6xl mx-auto min-h-[60vh]">
@@ -90,7 +304,10 @@ export default function Projects() {
         path={pages.projects.path}
         jsonLd={[
           breadcrumbJsonLd([
-            { name: 'Home', path: '/' }, { name: 'Projects', path: '/projects' }, ]), ]}
+            { name: 'Home', path: '/' },
+            { name: 'Projects', path: '/projects' },
+          ]),
+        ]}
       />
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
@@ -99,19 +316,28 @@ export default function Projects() {
             Kitchens I Have Worked
           </h1>
           <p className="font-sans font-light text-base leading-relaxed max-w-2xl text-black/80">
-            GupShup, Chote Miya, Ammi, and Punjab Meet House. Drop photos into each project folder
-            and they will show here.
+            GupShup, Chote Miya, Ammi, Punjab Meet House, and every kitchen since. Log in to add a
+            project with its story and photos.
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex gap-3">
           {loggedIn ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-5 py-2.5 hover:bg-black hover:text-sage transition-colors"
-            >
-              Log out
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={startCreate}
+                className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-5 py-2.5 bg-black text-sage hover:bg-transparent hover:text-black transition-colors"
+              >
+                Add project
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-5 py-2.5 hover:bg-black hover:text-sage transition-colors"
+              >
+                Log out
+              </button>
+            </>
           ) : (
             <button
               type="button"
@@ -161,12 +387,14 @@ export default function Projects() {
       {message && <p className="mb-6 text-sm text-emerald-800">{message}</p>}
       {error && <p className="mb-6 text-sm text-red-700">{error}</p>}
 
+      {loggedIn && editingSlug === 'new' && projectForm}
+
       {loading ? (
         <p className="font-sans font-light text-sm text-black/60">Loading projects…</p>
       ) : (
         <div className="space-y-16">
           {projects.map((project) => (
-            <section key={project.id} className="border-b border-black/10 pb-16 last:border-0">
+            <section key={project.id || project.slug} className="border-b border-black/10 pb-16 last:border-0">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
                 <div>
                   <p className="font-sans font-light text-xs tracking-[0.2em] uppercase text-black/60 mb-2">
@@ -199,18 +427,24 @@ export default function Projects() {
                       </a>
                     )}
                     {loggedIn && (
-                      <button
-                        type="button"
-                        onClick={() => startEdit(project)}
-                        className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-4 py-2 hover:bg-black hover:text-sage transition-colors"
-                      >
-                        Edit
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(project)}
+                          className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-4 py-2 hover:bg-black hover:text-sage transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(project)}
+                          className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-red-700 text-red-700 px-4 py-2 hover:bg-red-700 hover:text-white transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                   </div>
-                  <p className="mt-4 font-sans font-light text-[11px] text-black/45">
-                    Folder: <code>public/projects/{project.folder}/</code>
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -225,78 +459,13 @@ export default function Projects() {
                   ))}
                   {!(project.images || []).length && (
                     <div className="col-span-2 border border-dashed border-black/20 p-10 text-center font-sans font-light text-sm text-black/50">
-                      No photos yet. Add images to{' '}
-                      <code className="text-xs">public/projects/{project.folder}/</code>
+                      No photos yet. Log in and edit this project to upload some.
                     </div>
                   )}
                 </div>
               </div>
 
-              {loggedIn && editingSlug === project.slug && form && (
-                <form
-                  onSubmit={handleSave}
-                  className="mt-8 border border-black/15 bg-white/40 p-6 space-y-4 max-w-2xl"
-                >
-                  <h3 className="font-sans font-semibold text-sm tracking-[0.2em] uppercase">
-                    Edit {project.name}
-                  </h3>
-                  {['name', 'role', 'location', 'website', 'summary'].map((field) => (
-                    <div key={field}>
-                      <label className="block font-sans text-xs tracking-[0.15em] uppercase mb-1">
-                        {field}
-                      </label>
-                      <input
-                        type="text"
-                        value={form[field]}
-                        onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                        className="w-full bg-transparent border-0 border-b border-black/40 py-2 font-sans font-light text-sm focus:outline-none focus:border-black"
-                      />
-                    </div>
-                  ))}
-                  <div>
-                    <label className="block font-sans text-xs tracking-[0.15em] uppercase mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      rows={8}
-                      value={form.description}
-                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                      className="w-full border border-black/20 p-3 font-sans font-light text-sm focus:outline-none focus:border-black"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-sans text-xs tracking-[0.15em] uppercase mb-1">
-                      Add pictures
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => setFiles(Array.from(e.target.files || []))}
-                      className="block w-full font-sans font-light text-sm"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-6 py-2.5 hover:bg-black hover:text-sage transition-colors disabled:opacity-50"
-                    >
-                      {saving ? 'Saving…' : 'Save project'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingSlug('')
-                        setForm(null)
-                      }}
-                      className="font-sans font-light text-xs tracking-[0.2em] uppercase px-4 py-2.5"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
+              {loggedIn && editingSlug === project.slug && projectForm}
             </section>
           ))}
         </div>

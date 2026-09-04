@@ -1,95 +1,48 @@
-const TOKEN_KEY = 'zahir_admin_token'
+import {
+  adminLogin,
+  adminLogout,
+  adminMutate,
+  fetchCollection,
+  getAdminToken,
+  isLoggedIn,
+  reserveSlug,
+  setAdminToken,
+  uploadFiles,
+} from './apiClient'
 
-export function getAdminToken() {
-  try {
-    return sessionStorage.getItem(TOKEN_KEY) || ''
-  } catch {
-    return ''
-  }
-}
-
-export function setAdminToken(token) {
-  try {
-    if (token) sessionStorage.setItem(TOKEN_KEY, token)
-    else sessionStorage.removeItem(TOKEN_KEY)
-  } catch {
-    /* ignore */
-  }
-}
-
-export function isLoggedIn() {
-  return Boolean(getAdminToken())
-}
-
-export async function adminLogin(password) {
-  const res = await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password }),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Login failed')
-  setAdminToken(data.token)
-  return data
-}
-
-export async function adminLogout() {
-  const token = getAdminToken()
-  try {
-    await fetch('/api/admin/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ token }),
-    })
-  } catch {
-    /* ignore */
-  }
-  setAdminToken('')
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-export async function createRecipe({ name, steps, files }) {
-  const token = getAdminToken()
-  if (!token) throw new Error('Please log in first')
-
-  const images = []
-  for (const file of files || []) {
-    const data = await fileToBase64(file)
-    images.push({ data, type: file.type, name: file.name })
-  }
-
-  const res = await fetch('/api/admin/recipes', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ token, name, steps, images }),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Could not save recipe')
-  return data.recipe
-}
+export { adminLogin, adminLogout, getAdminToken, setAdminToken, isLoggedIn }
 
 export async function fetchRecipes() {
-  const res = await fetch(`/recipes/recipes.json?t=${Date.now()}`, { cache: 'no-store' })
-  if (!res.ok) return []
-  const data = await res.json()
-  return Array.isArray(data) ? data : []
+  return fetchCollection('recipes', '/recipes/recipes.json')
 }
 
 export async function fetchRecipeBySlug(slug) {
   const recipes = await fetchRecipes()
   return recipes.find((r) => r.slug === slug) || null
+}
+
+/**
+ * Publish a dish: reserve a slug, upload each photo/video straight to the
+ * media store, then save the metadata (name, ingredients, directions, URLs).
+ */
+export async function createRecipe({ name, ingredients, steps, files, onProgress }) {
+  const slug = await reserveSlug('recipes', name)
+  const { images, videos } = await uploadFiles({ scope: 'recipes', slug, files, onProgress })
+  const data = await adminMutate('/api/admin/recipes', {
+    body: { slug, name, ingredients, steps, images, videos },
+  })
+  return data.recipe
+}
+
+export async function updateRecipe({ slug, fields, files, removeImages, removeVideos, onProgress }) {
+  const { images, videos } = await uploadFiles({ scope: 'recipes', slug, files, onProgress })
+  const data = await adminMutate(`/api/admin/recipes/${encodeURIComponent(slug)}`, {
+    method: 'PUT',
+    body: { ...fields, images, videos, removeImages, removeVideos },
+  })
+  return data.recipe
+}
+
+export async function deleteRecipe(slug) {
+  return adminMutate(`/api/admin/recipes/${encodeURIComponent(slug)}`, { method: 'DELETE' })
 }

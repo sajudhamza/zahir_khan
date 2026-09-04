@@ -57,10 +57,26 @@ export default function RecipeDetail() {
         image={recipe.images?.[0] || '/images/food-main.jpg'}
         jsonLd={[
           breadcrumbJsonLd([
-            { name: 'Home', path: '/' }, { name: 'Recipes', path: '/recipes' }, { name: recipe.name, path: `/recipes/${recipe.slug}` }, ]), {
-            '@context': 'https://schema.org', '@type': 'Recipe', name: recipe.name, author: { '@type': 'Person', name: site.fullName }, recipeInstructions: (recipe.steps || []).map((text, i) => ({
-              '@type': 'HowToStep', position: i + 1, text, })), image: (recipe.images || []).map((src) =>
-              src.startsWith('http') ? src : `${site.url}${src}`, ), }, ]}
+            { name: 'Home', path: '/' },
+            { name: 'Recipes', path: '/recipes' },
+            { name: recipe.name, path: `/recipes/${recipe.slug}` },
+          ]),
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Recipe',
+            name: recipe.name,
+            author: { '@type': 'Person', name: site.fullName },
+            recipeIngredient: recipe.ingredients || [],
+            recipeInstructions: (recipe.steps || []).map((text, i) => ({
+              '@type': 'HowToStep',
+              position: i + 1,
+              text,
+            })),
+            image: (recipe.images || []).map((src) =>
+              src.startsWith('http') ? src : `${site.url}${src}`,
+            ),
+          },
+        ]}
       />
 
       <Link
@@ -74,9 +90,9 @@ export default function RecipeDetail() {
         {recipe.name}
       </h1>
 
-      {recipe.images?.length > 0 && (
+      {(recipe.images?.length > 0 || recipe.videos?.length > 0) && (
         <div className="space-y-4 mb-12">
-          {recipe.images.map((src) => (
+          {(recipe.images || []).map((src) => (
             <img
               key={src}
               src={src}
@@ -85,11 +101,39 @@ export default function RecipeDetail() {
               loading="lazy"
             />
           ))}
+          {(recipe.videos || []).map((src) => (
+            <video
+              key={src}
+              src={src}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full h-auto bg-black"
+            />
+          ))}
         </div>
       )}
 
+      {recipe.ingredients?.length > 0 && (
+        <>
+          <h2 className="font-sans font-semibold text-sm tracking-[0.25em] uppercase mb-6">
+            Ingredients
+          </h2>
+          <ul className="space-y-2 mb-12 list-disc list-inside">
+            {recipe.ingredients.map((item, index) => (
+              <li
+                key={`${index}-${item.slice(0, 20)}`}
+                className="font-sans font-light text-base leading-relaxed pl-1"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       <h2 className="font-sans font-semibold text-sm tracking-[0.25em] uppercase mb-6">
-        Steps to make it
+        Directions to cook
       </h2>
       <ol className="space-y-4 list-decimal list-inside">
         {(recipe.steps || []).map((step, index) => (

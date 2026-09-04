@@ -6,10 +6,14 @@ import {
   adminLogin,
   adminLogout,
   createRecipe,
+  updateRecipe,
+  deleteRecipe,
   fetchRecipes,
   getAdminToken,
   isLoggedIn,
 } from '../lib/recipesApi'
+
+const EMPTY_FORM = { name: '', ingredients: '', steps: '', files: [] }
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([])
@@ -19,13 +23,14 @@ export default function Recipes() {
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [progress, setProgress] = useState('')
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
-  const [form, setForm] = useState({
-    name: '',
-    steps: '',
-    files: [],
-  })
+  const [showForm, setShowForm] = useState(false)
+  const [editingSlug, setEditingSlug] = useState('')
+  const [removeMedia, setRemoveMedia] = useState([])
+  const [editingMedia, setEditingMedia] = useState({ images: [], videos: [] })
+  const [form, setForm] = useState(EMPTY_FORM)
 
   const loadRecipes = useCallback(async () => {
     setLoading(true)
@@ -59,34 +64,101 @@ export default function Recipes() {
     await adminLogout()
     setLoggedIn(false)
     setFormSuccess('')
+    closeForm()
   }
 
-  async function handleCreate(e) {
+  function openCreate() {
+    setEditingSlug('')
+    setForm(EMPTY_FORM)
+    setRemoveMedia([])
+    setEditingMedia({ images: [], videos: [] })
+    setFormError('')
+    setFormSuccess('')
+    setShowForm(true)
+  }
+
+  function openEdit(recipe) {
+    setEditingSlug(recipe.slug)
+    setForm({
+      name: recipe.name || '',
+      ingredients: (recipe.ingredients || []).join('\n'),
+      steps: (recipe.steps || []).join('\n'),
+      files: [],
+    })
+    setRemoveMedia([])
+    setEditingMedia({ images: recipe.images || [], videos: recipe.videos || [] })
+    setFormError('')
+    setFormSuccess('')
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditingSlug('')
+    setForm(EMPTY_FORM)
+    setRemoveMedia([])
+    setEditingMedia({ images: [], videos: [] })
+    setProgress('')
+  }
+
+  function toggleRemove(src) {
+    setRemoveMedia((list) =>
+      list.includes(src) ? list.filter((s) => s !== src) : [...list, src],
+    )
+  }
+
+  const onProgress = (index, total, frac, filename) =>
+    setProgress(`Uploading ${index + 1}/${total} (${Math.round(frac * 100)}%) — ${filename}`)
+
+  async function handleSave(e) {
     e.preventDefault()
     setFormError('')
     setFormSuccess('')
     setSaving(true)
+    setProgress('')
     try {
       if (!getAdminToken()) {
         setLoggedIn(false)
         throw new Error('Please log in first')
       }
-      const steps = form.steps
-        .split(/\n+/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-      await createRecipe({
+      const payload = {
         name: form.name.trim(),
-        steps,
-        files: form.files,
-      })
-      setForm({ name: '', steps: '', files: [] })
-      setFormSuccess('Recipe saved to the project folder.')
+        ingredients: form.ingredients,
+        steps: form.steps,
+      }
+      if (editingSlug) {
+        await updateRecipe({
+          slug: editingSlug,
+          fields: payload,
+          files: form.files,
+          removeImages: removeMedia.filter((src) => editingMedia.images.includes(src)),
+          removeVideos: removeMedia.filter((src) => editingMedia.videos.includes(src)),
+          onProgress,
+        })
+        setFormSuccess('Recipe updated.')
+      } else {
+        await createRecipe({ ...payload, files: form.files, onProgress })
+        setFormSuccess('Recipe published.')
+      }
+      closeForm()
       await loadRecipes()
     } catch (err) {
       setFormError(err.message || 'Could not save recipe')
     } finally {
       setSaving(false)
+      setProgress('')
+    }
+  }
+
+  async function handleDelete(recipe) {
+    if (!window.confirm(`Delete "${recipe.name}" and all of its photos/videos?`)) return
+    setFormError('')
+    try {
+      await deleteRecipe(recipe.slug)
+      setFormSuccess(`Deleted ${recipe.name}.`)
+      await loadRecipes()
+    } catch (err) {
+      setFormError(err.message || 'Could not delete recipe')
     }
   }
 
@@ -115,15 +187,24 @@ export default function Recipes() {
           </p>
         </div>
 
-        <div className="shrink-0">
+        <div className="shrink-0 flex gap-3">
           {loggedIn ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-5 py-2.5 hover:bg-black hover:text-sage transition-colors"
-            >
-              Log out
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={openCreate}
+                className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-5 py-2.5 bg-black text-sage hover:bg-transparent hover:text-black transition-colors"
+              >
+                Add recipe
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="font-sans font-semibold text-xs tracking-[0.25em] uppercase border border-black px-5 py-2.5 hover:bg-black hover:text-sage transition-colors"
+              >
+                Log out
+              </button>
+            </>
           ) : (
             <button
               type="button"
@@ -181,16 +262,12 @@ export default function Recipes() {
         </div>
       )}
 
-      {loggedIn && (
+      {loggedIn && showForm && (
         <section className="mb-14 border border-black/15 bg-white/40 p-6 sm:p-8">
-          <h2 className="font-sans font-semibold text-sm tracking-[0.2em] uppercase mb-2">
-            Add a recipe
+          <h2 className="font-sans font-semibold text-sm tracking-[0.2em] uppercase mb-6">
+            {editingSlug ? `Edit ${form.name || 'recipe'}` : 'Add a recipe'}
           </h2>
-          <p className="font-sans font-light text-sm text-black/70 mb-6">
-            Saved into <code className="text-xs">public/recipes/</code> in the project folder
-            (JSON + images).
-          </p>
-          <form onSubmit={handleCreate} className="space-y-6 max-w-2xl">
+          <form onSubmit={handleSave} className="space-y-6 max-w-2xl">
             <div>
               <label htmlFor="dish-name" className="block font-sans text-xs tracking-[0.15em] uppercase mb-2">
                 Dish name
@@ -207,8 +284,23 @@ export default function Recipes() {
             </div>
 
             <div>
+              <label htmlFor="dish-ingredients" className="block font-sans text-xs tracking-[0.15em] uppercase mb-2">
+                Ingredients
+              </label>
+              <textarea
+                id="dish-ingredients"
+                rows={6}
+                value={form.ingredients}
+                onChange={(e) => setForm((f) => ({ ...f, ingredients: e.target.value }))}
+                required
+                placeholder={'One ingredient per line\n500g chicken thighs\n2 tbsp garam masala...'}
+                className="w-full bg-transparent border border-black/20 p-3 font-sans font-light text-sm focus:outline-none focus:border-black resize-y"
+              />
+            </div>
+
+            <div>
               <label htmlFor="dish-steps" className="block font-sans text-xs tracking-[0.15em] uppercase mb-2">
-                Steps to make it
+                Directions to cook
               </label>
               <textarea
                 id="dish-steps"
@@ -221,14 +313,63 @@ export default function Recipes() {
               />
             </div>
 
+            {editingSlug &&
+              (editingMedia.images.length > 0 || editingMedia.videos.length > 0) && (
+                <div>
+                  <p className="block font-sans text-xs tracking-[0.15em] uppercase mb-2">
+                    Current photos & videos
+                    <span className="normal-case tracking-normal text-black/50"> — click to remove</span>
+                  </p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {editingMedia.images.map((src) => (
+                      <button
+                        key={src}
+                        type="button"
+                        onClick={() => toggleRemove(src)}
+                        className={`relative aspect-square overflow-hidden border ${
+                          removeMedia.includes(src) ? 'border-red-600 opacity-40' : 'border-black/15'
+                        }`}
+                      >
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                        {removeMedia.includes(src) && (
+                          <span className="absolute inset-0 flex items-center justify-center font-sans text-[10px] uppercase tracking-[0.2em] text-red-700 bg-white/60">
+                            Remove
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    {editingMedia.videos.map((src) => (
+                      <button
+                        key={src}
+                        type="button"
+                        onClick={() => toggleRemove(src)}
+                        className={`relative aspect-square overflow-hidden border ${
+                          removeMedia.includes(src) ? 'border-red-600 opacity-40' : 'border-black/15'
+                        }`}
+                      >
+                        <video src={src} muted className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1 right-1 font-sans text-[9px] uppercase tracking-[0.15em] bg-black/70 text-white px-1.5 py-0.5">
+                          Video
+                        </span>
+                        {removeMedia.includes(src) && (
+                          <span className="absolute inset-0 flex items-center justify-center font-sans text-[10px] uppercase tracking-[0.2em] text-red-700 bg-white/60">
+                            Remove
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             <div>
-              <label htmlFor="dish-photos" className="block font-sans text-xs tracking-[0.15em] uppercase mb-2">
-                Pictures
+              <label htmlFor="dish-media" className="block font-sans text-xs tracking-[0.15em] uppercase mb-2">
+                Photos & videos
               </label>
               <input
-                id="dish-photos"
+                id="dish-media"
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
                 onChange={(e) =>
                   setForm((f) => ({ ...f, files: Array.from(e.target.files || []) }))
@@ -237,24 +378,36 @@ export default function Recipes() {
               />
               {form.files.length > 0 && (
                 <p className="mt-2 font-sans font-light text-xs text-black/60">
-                  {form.files.length} image{form.files.length === 1 ? '' : 's'} selected
+                  {form.files.length} file{form.files.length === 1 ? '' : 's'} selected
                 </p>
               )}
             </div>
 
+            {progress && <p className="text-sm text-black/70">{progress}</p>}
             {formError && <p className="text-sm text-red-700">{formError}</p>}
-            {formSuccess && <p className="text-sm text-emerald-800">{formSuccess}</p>}
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="font-sans font-semibold text-xs tracking-[0.3em] uppercase border border-black px-10 py-3 hover:bg-black hover:text-sage transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Publish recipe'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="font-sans font-semibold text-xs tracking-[0.3em] uppercase border border-black px-10 py-3 hover:bg-black hover:text-sage transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : editingSlug ? 'Save changes' : 'Publish recipe'}
+              </button>
+              <button
+                type="button"
+                onClick={closeForm}
+                className="font-sans font-light text-xs tracking-[0.2em] uppercase px-4 py-3 hover:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </section>
       )}
+
+      {formSuccess && !showForm && <p className="mb-6 text-sm text-emerald-800">{formSuccess}</p>}
+      {formError && !showForm && <p className="mb-6 text-sm text-red-700">{formError}</p>}
 
       <div className="mb-8">
         <button
@@ -286,37 +439,66 @@ export default function Recipes() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {recipes.map((recipe) => (
-            <Link
-              key={recipe.id}
-              to={`/recipes/${recipe.slug}`}
-              className="group block overflow-hidden border border-black/10 bg-white/30 hover:border-black/30 transition-colors"
+            <div
+              key={recipe.id || recipe.slug}
+              className="group relative block overflow-hidden border border-black/10 bg-white/30 hover:border-black/30 transition-colors"
             >
-              <div className="aspect-[4/3] overflow-hidden bg-black/5">
-                {recipe.images?.[0] ? (
-                  <img
-                    src={recipe.images[0]}
-                    alt={recipe.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center font-sans text-xs tracking-[0.2em] uppercase text-black/40">
-                    No photo
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h2 className="font-sans font-medium text-lg mb-1 group-hover:opacity-70 transition-opacity">
-                  {recipe.name}
-                </h2>
-                <p className="font-sans font-light text-xs text-black/60">
-                  {recipe.steps?.length || 0} steps
-                  {recipe.images?.length
-                    ? ` · ${recipe.images.length} photo${recipe.images.length === 1 ? '' : 's'}`
-                    : ''}
-                </p>
-              </div>
-            </Link>
+              <Link to={`/recipes/${recipe.slug}`} className="block">
+                <div className="aspect-[4/3] overflow-hidden bg-black/5">
+                  {recipe.images?.[0] ? (
+                    <img
+                      src={recipe.images[0]}
+                      alt={recipe.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : recipe.videos?.[0] ? (
+                    <video
+                      src={recipe.videos[0]}
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-sans text-xs tracking-[0.2em] uppercase text-black/40">
+                      No photo
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h2 className="font-sans font-medium text-lg mb-1 group-hover:opacity-70 transition-opacity">
+                    {recipe.name}
+                  </h2>
+                  <p className="font-sans font-light text-xs text-black/60">
+                    {recipe.ingredients?.length
+                      ? `${recipe.ingredients.length} ingredients · `
+                      : ''}
+                    {recipe.steps?.length || 0} steps
+                    {recipe.videos?.length
+                      ? ` · ${recipe.videos.length} video${recipe.videos.length === 1 ? '' : 's'}`
+                      : ''}
+                  </p>
+                </div>
+              </Link>
+              {loggedIn && (
+                <div className="flex gap-2 px-4 pb-4">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(recipe)}
+                    className="font-sans font-semibold text-[10px] tracking-[0.2em] uppercase border border-black px-3 py-1.5 hover:bg-black hover:text-sage transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(recipe)}
+                    className="font-sans font-semibold text-[10px] tracking-[0.2em] uppercase border border-red-700 text-red-700 px-3 py-1.5 hover:bg-red-700 hover:text-white transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

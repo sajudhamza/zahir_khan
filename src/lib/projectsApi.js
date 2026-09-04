@@ -1,28 +1,19 @@
 import {
-  getAdminToken,
-  setAdminToken,
-  isLoggedIn,
   adminLogin,
   adminLogout,
-} from './recipesApi'
+  adminMutate,
+  fetchCollection,
+  getAdminToken,
+  isLoggedIn,
+  reserveSlug,
+  setAdminToken,
+  uploadFiles,
+} from './apiClient'
 
-export { getAdminToken, setAdminToken, isLoggedIn, adminLogin, adminLogout }
+export { adminLogin, adminLogout, getAdminToken, setAdminToken, isLoggedIn }
 
 export async function fetchProjects() {
-  try {
-    const res = await fetch(`/api/projects?t=${Date.now()}`, { cache: 'no-store' })
-    if (res.ok) {
-      const data = await res.json()
-      if (Array.isArray(data.projects)) return data.projects
-    }
-  } catch {
-    /* fall through to static json */
-  }
-
-  const res = await fetch(`/projects/projects.json?t=${Date.now()}`, { cache: 'no-store' })
-  if (!res.ok) return []
-  const data = await res.json()
-  return Array.isArray(data) ? data : []
+  return fetchCollection('projects', '/projects/projects.json')
 }
 
 export async function fetchProjectBySlug(slug) {
@@ -30,34 +21,28 @@ export async function fetchProjectBySlug(slug) {
   return projects.find((p) => p.slug === slug || p.id === slug) || null
 }
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+/**
+ * Add a restaurant/kitchen: reserve a slug, upload the photos, save the
+ * metadata (name, description, photo URLs).
+ */
+export async function createProject({ name, description, fields = {}, files, onProgress }) {
+  const slug = await reserveSlug('projects', name)
+  const { images } = await uploadFiles({ scope: 'projects', slug, files, onProgress })
+  const data = await adminMutate('/api/admin/projects', {
+    body: { slug, name, description, ...fields, images },
   })
+  return data.project
 }
 
-export async function updateProject({ slug, fields, files }) {
-  const token = getAdminToken()
-  if (!token) throw new Error('Please log in first')
-
-  const images = []
-  for (const file of files || []) {
-    const data = await fileToBase64(file)
-    images.push({ data, type: file.type, name: file.name })
-  }
-
-  const res = await fetch('/api/admin/projects', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ token, slug, ...fields, images }),
+export async function updateProject({ slug, fields, files, removeImages, onProgress }) {
+  const { images } = await uploadFiles({ scope: 'projects', slug, files, onProgress })
+  const data = await adminMutate(`/api/admin/projects/${encodeURIComponent(slug)}`, {
+    method: 'PUT',
+    body: { ...fields, images, removeImages },
   })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Could not update project')
   return data.project
+}
+
+export async function deleteProject(slug) {
+  return adminMutate(`/api/admin/projects/${encodeURIComponent(slug)}`, { method: 'DELETE' })
 }
